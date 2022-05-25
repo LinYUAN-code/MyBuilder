@@ -9,11 +9,12 @@ import (
 
 func main() {
 	println("LRJ builder *★,°*:.☆(￣▽￣)/$:*.°★* 。")
-	parser,err := parser.NewParser("./hello.js")
+	parser,err := parser.NewParser("./test/fibo.js")
 	if err != nil {
 		println(err.Error())
 		os.Exit(-1)
 	}
 	parser.Lexer.SayHello()
-	parser.ShowAllTocken()
+	// program := parser.ParseProgram()
+	println(len(program.Stmt))
 }

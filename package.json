@@ -1,0 +1,20 @@
+{
+  "name": "mybuilder",
+  "version": "1.0.0",
+  "description": "模仿esbuild，用go写一个前端打包工具，当作学习",
+  "main": "hello.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LinYUAN-code/MyBuilder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LinYUAN-code/MyBuilder/issues"
+  },
+  "homepage": "https://github.com/LinYUAN-code/MyBuilder#readme"
+}

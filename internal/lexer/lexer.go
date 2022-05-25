@@ -7,55 +7,15 @@ import (
 /*
 	使用"unicode/utf8"读取utf8码点 然后直接进行状态机模型找到具体的Tocken就好了
 */
-type T uint32
-// 记录词法符号
-const (
-	LENDOFFILE T  = iota
 
-	LIdentifier 
-	
-	LInteger
-
-	LSemicolon
-
-	LEqual
-
-	LLet
-	LFor
-)
-
-
-type Lexer struct {
-
-	// 当前读取的Tocken
-	Tocken T
-
-	// 如果T 是 LIdentifier 那么这里记录的就是变量名
-	Identifier string
-
-	// 如果Number整数 负责记录整数大小
-	Integer int64 
-
-	// 记录utf8码点
-	CodePoint rune
-
-	// 输入的文件文本
-	content string
-
-	// 下一个开始的读入位置
-	current uint32
-
-	// 当前codePoint 的开始和结束位置
-	start uint32
-	end uint32
-
-}
 
 func NewLexer(content string) (*Lexer) {
-	return &Lexer{
+	lexer :=  &Lexer{
 		content: content,
 		current: 0,
 	}
+	lexer.ReadUtf8()
+	return lexer
 }
 
 
@@ -113,10 +73,7 @@ func IsIdentifierStart(codePoint rune) bool {
 	return false
 }
 
-var keywords = map[string] T {
-	"let": LLet,
-	"for": LFor,
-}
+
 
 func toKeyWords(key string) T {
 	tocken, ok := keywords[key]
@@ -133,14 +90,21 @@ func (lexer Lexer) Raw() string {
 
 func (lexer *Lexer) parseNumber() {
 	// 简单的支持一下十进制整数
-	base := 10
-	integer := 0
-	for lexer.CodePoint >= '0' && lexer.CodePoint <= '9' {
+	if lexer.CodePoint == '.' {
 		lexer.ReadUtf8()
-		integer = integer*base + (int(lexer.CodePoint) - '0')
+		if lexer.CodePoint < '0' || lexer.CodePoint > '9' {
+			lexer.Tocken = LDot
+			return 
+		}
 	}
+	// base := 10
+	// integer := 0
+	// for lexer.CodePoint >= '0' && lexer.CodePoint <= '9' {
+	// 	lexer.ReadUtf8()
+	// 	integer = integer*base + (int(lexer.CodePoint) - '0')
+	// }
 	lexer.Tocken = LInteger
-	lexer.Integer = int64(integer)
+	lexer.Value = lexer.content[lexer.start:lexer.end]
 }
 
 func (lexer *Lexer) newLine() {
@@ -149,7 +113,6 @@ func (lexer *Lexer) newLine() {
 
 // 获取下一个Tocken
 func (lexer *Lexer) Next() {
-	lexer.ReadUtf8()
 	for {
 		lexer.start = lexer.end
 		switch lexer.CodePoint {
@@ -165,9 +128,77 @@ func (lexer *Lexer) Next() {
 			continue
 		case ';':
 			lexer.Tocken = LSemicolon
+			lexer.ReadUtf8()
 		case '=':
 			lexer.Tocken = LEqual
-		case '1', '2', '3', '4', '5', '6', '7', '8', '9': //简单支持十进制整数
+			lexer.ReadUtf8()
+			if lexer.Tocken == '=' {
+				lexer.ReadUtf8()
+				if lexer.Tocken == '=' {
+					lexer.Tocken = LEqualEqualEqual 
+					lexer.ReadUtf8()
+				} else {
+					lexer.Tocken = LEqualEqual
+				}
+			}
+		case '|':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '=':
+				lexer.Tocken = LBarEqual
+				lexer.ReadUtf8()
+			case '|':
+				lexer.Tocken = LBarBar
+				lexer.ReadUtf8()
+			default:
+				lexer.Tocken = LBar
+			}
+		case '(':
+			lexer.Tocken = LOpenParen
+			lexer.ReadUtf8()
+		case ')':
+			lexer.Tocken = LCloseParen
+			lexer.ReadUtf8()
+		case '{':
+			lexer.Tocken = LOpenBrace
+			lexer.ReadUtf8()
+		case '}':
+			lexer.Tocken = LCloseBrace
+			lexer.ReadUtf8()
+		case '[':
+			lexer.Tocken = LOpenBraket
+			lexer.ReadUtf8()
+		case ']':
+			lexer.Tocken = LCloseBraket
+			lexer.ReadUtf8()
+		case '+':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '+':
+				lexer.Tocken = LPlusPlus
+				lexer.ReadUtf8()
+			default:
+				lexer.Tocken = LPlus
+			}
+		case '-':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '-':
+				lexer.Tocken = LMinusMinus
+				lexer.ReadUtf8()
+			default:
+				lexer.Tocken = LMinus
+			}
+		case '<':
+			lexer.Tocken = LLess
+			lexer.ReadUtf8()
+		case '>':
+			lexer.Tocken = LGreater
+			lexer.ReadUtf8()
+		case ',':
+			lexer.Tocken = LComma
+			lexer.ReadUtf8()
+		case '.','0','1', '2', '3', '4', '5', '6', '7', '8', '9': //简单支持十进制整数
 			lexer.parseNumber()
 		case '_', '$',  //识别标识符
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -181,8 +212,9 @@ func (lexer *Lexer) Next() {
 			contents := lexer.Raw()
 			lexer.Tocken = toKeyWords(contents)
 			if lexer.Tocken == LIdentifier {
-				lexer.Identifier = contents
+				lexer.Value = contents
 			}
+		case '"','\'':
 		}
 		return 
 	}
