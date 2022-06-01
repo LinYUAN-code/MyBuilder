@@ -181,3 +181,12 @@ func NewSVariablesOrExpression(fir Expr) Stmt {
 type SVariablesOrExpression struct {
 	Fir Expr
 }
+
+func NewSEmpty() Stmt {
+	return Stmt{
+		Data: SEmpty{},
+	}
+}
+type SEmpty struct {
+
+}

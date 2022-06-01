@@ -103,6 +103,9 @@ func (lexer *Lexer) parseNumber() {
 	// 	lexer.ReadUtf8()
 	// 	integer = integer*base + (int(lexer.CodePoint) - '0')
 	// }
+	for lexer.CodePoint >= '0' && lexer.CodePoint <= '9' {
+		lexer.ReadUtf8()
+	}
 	lexer.Tocken = LInteger
 	lexer.Value = lexer.content[lexer.start:lexer.end]
 }
@@ -132,9 +135,9 @@ func (lexer *Lexer) Next() {
 		case '=':
 			lexer.Tocken = LEqual
 			lexer.ReadUtf8()
-			if lexer.Tocken == '=' {
+			if lexer.CodePoint == '=' {
 				lexer.ReadUtf8()
-				if lexer.Tocken == '=' {
+				if lexer.CodePoint == '=' {
 					lexer.Tocken = LEqualEqualEqual 
 					lexer.ReadUtf8()
 				} else {

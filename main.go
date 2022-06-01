@@ -15,8 +15,6 @@ func main() {
 		os.Exit(-1)
 	}
 	parser.Lexer.SayHello()
-	// program := parser.ParseProgram()
-	// println(len(program.Stmt))
-
-	
+	program := parser.ParseStmts()
+	println(len(program.Stmt))
 }

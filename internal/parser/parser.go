@@ -54,6 +54,8 @@ func (parse *Parser) ShowAllTocken() {
 
 
 func (parser *Parser) parseArgs() ([]Expr) {
+	Assert(parser.Lexer.Tocken == LOpenParen)
+	parser.Lexer.Next()
 	result := make([]Expr,0)
 	for parser.Lexer.Tocken == LIdentifier {
 		result = append(result, NewEIdentifier(parser.Lexer.Value))
@@ -63,6 +65,8 @@ func (parser *Parser) parseArgs() ([]Expr) {
 		}
 		parser.Lexer.Next()
 	}
+	Assert(parser.Lexer.Tocken == LCloseParen)
+	parser.Lexer.Next()
 	return result
 }
 
@@ -70,9 +74,11 @@ func (parser *Parser) parseArgs() ([]Expr) {
 func (parser *Parser) ParseStmts() (Stmts) {
 	program := Stmts{}
 	program.Stmt = make([]Stmt,0)
-	for {
+	parser.Lexer.Next()
+	for parser.Lexer.Tocken != LENDOFFILE{
 		program.Stmt = append(program.Stmt, parser.ParseElement())
 	}
+	return program
 }
 
 func (parser *Parser) ParseElement() (Stmt) {
@@ -83,7 +89,6 @@ func (parser *Parser) ParseElement() (Stmt) {
 		name := NewEIdentifier(parser.Lexer.Value)
 		parser.Lexer.Next()
 		args := parser.parseArgs()
-		parser.Lexer.Next()
 		body := parser.ParseCompoundStatement()
 		return NewSFunction(name,args,body)
 	default:
@@ -92,9 +97,15 @@ func (parser *Parser) ParseElement() (Stmt) {
 }
 
 func (parser *Parser) ParseCompoundStatement() Stmt {
-	Assert(parser.Lexer.Tocken==LOpenBraket)
+	Assert(parser.Lexer.Tocken==LOpenBrace)
+	parser.Lexer.Next()
+	if parser.Lexer.Tocken == LCloseBrace {
+		parser.Lexer.Next()
+		return NewSEmpty()
+	}
 	body := parser.ParseStatements()
-	Assert(parser.Lexer.Tocken==LCloseBraket)
+	Assert(parser.Lexer.Tocken==LCloseBrace)
+	parser.Lexer.Next()
 	return NewCompoundStatement(body)
 }
 
@@ -102,13 +113,18 @@ func (parser *Parser) ParseCompoundStatement() Stmt {
 
 func (parser *Parser) ParseStatements() []Stmt {
 	result := make([]Stmt,0)
-	Assert(parser.Lexer.Tocken==LOpenBraket)
-	parser.Lexer.Next()
-	for parser.Lexer.Tocken != LCloseBraket {
+	for parser.Lexer.Tocken != LCloseBrace {
+		// 去除多余分号
 		result = append(result, parser.ParseStatement())
-		parser.Lexer.Next()
+		parser.DelSemicolon()
 	}
 	return result
+}
+
+func (parser *Parser) DelSemicolon() {
+	for parser.Lexer.Tocken == LSemicolon {
+		parser.Lexer.Next()
+	}
 }
 
 func (parser *Parser) ParseStatement() Stmt {
@@ -135,6 +151,7 @@ func (parser *Parser) ParseStatement() Stmt {
 		case LFor: //还不支持for of
 			parser.Lexer.Next()
 			Assert(parser.Lexer.Tocken==LOpenParen)
+			parser.Lexer.Next()
 			var fir,sec,thir Expr
 			var stmt Stmt
 			if parser.Lexer.Tocken == LComma {
@@ -142,6 +159,7 @@ func (parser *Parser) ParseStatement() Stmt {
 			} else {
 				fir = parser.ParseVariablesOrExpression()
 			}
+			parser.Lexer.Next()
 			if parser.Lexer.Tocken == LIn {
 				parser.Lexer.Next()
 				sec = parser.ParseExpression()
@@ -150,7 +168,6 @@ func (parser *Parser) ParseStatement() Stmt {
 				stmt = parser.ParseStatement()
 				return NewSForIn(fir,sec,stmt)
 			} else {
-				parser.Lexer.Next()
 				if parser.Lexer.Tocken == LComma {
 					sec = NewEEmpty()
 				} else {
@@ -162,6 +179,7 @@ func (parser *Parser) ParseStatement() Stmt {
 				} else {
 					thir = parser.ParseExpression()
 				}
+				Assert(parser.Lexer.Tocken == LCloseParen)
 				parser.Lexer.Next()
 				stmt = parser.ParseStatement()
 				return NewSFor(fir,sec,thir,stmt)
@@ -187,6 +205,8 @@ func (parser *Parser) ParseStatement() Stmt {
 			} else {
 				fir = parser.ParseExpression()
 			}
+			Assert(parser.Lexer.Tocken == LSemicolon)
+			parser.Lexer.Next()
 			return NewSReturn(fir)
 		case LOpenBrace:
 			return parser.ParseCompoundStatement()
@@ -203,10 +223,13 @@ func (parser *Parser) ParseVariablesOrExpression() Expr {
 	var opt Declear
 	switch parser.Lexer.Tocken {
 	case LLet:
+		parser.Lexer.Next()
 		opt = Let
 	case LVar:
+		parser.Lexer.Next()
 		opt = Var
 	case LConst:
+		parser.Lexer.Next()
 		opt = Const
 	default:
 		return parser.ParseExpression()
@@ -218,15 +241,27 @@ func (parser *Parser) ParseVariablesOrExpression() Expr {
 func (parser *Parser) ParseVariables() Expr {	
 	results := make([]Expr,0)
 	for {
-		Assert(parser.Lexer.Tocken == LIdentifier)
-		results = append(results, NewEIdentifier(parser.Lexer.Value))
+		results = append(results, parser.ParseVariable())
 		if parser.Lexer.Tocken != LComma {
 			break
 		}
 		parser.Lexer.Next()
-	}	
-	assignmentExpression := parser.ParseAssignmentExpression()
-	return NewEVariables(results,assignmentExpression)
+	}
+	return NewEVariables(results)
+}
+
+func (parser *Parser) ParseVariable() Expr {
+	Assert(parser.Lexer.Tocken == LIdentifier)
+	identifier := NewEIdentifier(parser.Lexer.Value)
+	parser.Lexer.Next()
+	var assignmentExpression Expr
+	if parser.Lexer.Tocken == LEqual {
+		parser.Lexer.Next()
+		assignmentExpression = parser.ParseAssignmentExpression()
+	} else {
+		assignmentExpression = NewEEmpty()
+	}
+	return NewEVariable(identifier,assignmentExpression)
 }
 
 func (parser *Parser) ParseAssignmentExpression() Expr {
@@ -258,6 +293,7 @@ func (parser *Parser) ParseConditionalExpression() Expr {
 func (parser *Parser) ParseOrExpression() Expr {
 	fir := parser.ParseAndExpression()
 	if parser.Lexer.Tocken == LBarBar {
+		parser.Lexer.Next()
 		sec := parser.ParseOrExpression()
 		return NewEDualCal(fir,BarBar,sec)
 	}
@@ -267,6 +303,7 @@ func (parser *Parser) ParseOrExpression() Expr {
 func (parser *Parser) ParseAndExpression() Expr {
 	fir := parser.ParseBitwiseOrExpression()
 	if parser.Lexer.Tocken == LAndAnd {
+		parser.Lexer.Next()
 		sec := parser.ParseAndExpression()
 		return NewEDualCal(fir,AndAnd,sec)
 	}
@@ -276,6 +313,7 @@ func (parser *Parser) ParseAndExpression() Expr {
 func (parser *Parser) ParseBitwiseOrExpression() Expr {
 	fir := parser.ParseBitwiseXorExpression()
 	if parser.Lexer.Tocken == LBar {
+		parser.Lexer.Next()
 		sec := parser.ParseBitwiseOrExpression()
 		return NewEDualCal(fir,Bar,sec)
 	}
@@ -285,6 +323,8 @@ func (parser *Parser) ParseBitwiseOrExpression() Expr {
 func (parser *Parser) ParseBitwiseXorExpression() Expr {
 	fir := parser.ParseBitwiseAndExpression()
 	if parser.Lexer.Tocken == LCaret {
+		parser.Lexer.Next()
+
 		sec := parser.ParseBitwiseAndExpression()
 		return NewEDualCal(fir,Caret,sec)
 	}
@@ -294,6 +334,8 @@ func (parser *Parser) ParseBitwiseXorExpression() Expr {
 func (parser *Parser) ParseBitwiseAndExpression() Expr {
 	fir := parser.ParseEqualityExpression()
 	if parser.Lexer.Tocken == LAnd {
+		parser.Lexer.Next()
+
 		sec := parser.ParseBitwiseAndExpression()
 		return NewEDualCal(fir,And,sec)
 	}
@@ -306,15 +348,19 @@ func (parser *Parser) ParseEqualityExpression() Expr {
 	fir := parser.ParseRelationalExpression()
 	switch parser.Lexer.Tocken {
 	case LEqualEqual:
+		parser.Lexer.Next()
 		sec := parser.ParseEqualityExpression()
 		return NewEDualCal(fir,EqualEuqal,sec)
 	case LEqualEqualEqual:
+		parser.Lexer.Next()
 		sec := parser.ParseEqualityExpression()
 		return NewEDualCal(fir,EqualEuqalEuqal,sec)
 	case LExclamationEqual:
+		parser.Lexer.Next()
 		sec := parser.ParseEqualityExpression()
 		return NewEDualCal(fir,ExclamationEqual,sec)
 	case LExclamationEqualEqual:
+		parser.Lexer.Next()
 		sec := parser.ParseEqualityExpression()
 		return NewEDualCal(fir,ExclamationEqualEqual,sec)
 	}
@@ -325,15 +371,23 @@ func (parser *Parser) ParseRelationalExpression() Expr {
 	fir := parser.ParseShiftExpression()
 	switch parser.Lexer.Tocken {
 	case LLess:
+		parser.Lexer.Next()
+
 		sec := parser.ParseRelationalExpression()
 		return NewEDualCal(fir,Less,sec)
 	case LLessEqual:
+		parser.Lexer.Next()
+
 		sec := parser.ParseRelationalExpression()
 		return NewEDualCal(fir,LessEqual,sec)
 	case LGreater:
+		parser.Lexer.Next()
+
 		sec := parser.ParseRelationalExpression()
 		return NewEDualCal(fir,Greater,sec)
 	case LGreaterEqual:
+		parser.Lexer.Next()
+
 		sec := parser.ParseRelationalExpression()
 		return NewEDualCal(fir,GreaterEqual,sec)
 	}
@@ -344,9 +398,13 @@ func (parser *Parser) ParseShiftExpression() Expr {
 	fir := parser.ParseAdditiveExpression()
 	switch parser.Lexer.Tocken {
 	case LLshift:
+		parser.Lexer.Next()
+
 		sec := parser.ParseShiftExpression()
 		return NewEDualCal(fir,LShift,sec)
 	case LRshift:
+		parser.Lexer.Next()
+
 		sec := parser.ParseShiftExpression()
 		return NewEDualCal(fir,RShift,sec)
 	}
@@ -357,9 +415,11 @@ func (parser *Parser) ParseAdditiveExpression() Expr {
 	fir := parser.ParseMultiplicativeExpression()
 	switch parser.Lexer.Tocken {
 	case LPlus:
+		parser.Lexer.Next()
 		sec := parser.ParseAdditiveExpression()
 		return NewEDualCal(fir,Plus,sec)
 	case LMinus:
+		parser.Lexer.Next()
 		sec := parser.ParseAdditiveExpression()
 		return NewEDualCal(fir,Minus,sec)
 	}
@@ -369,6 +429,8 @@ func (parser *Parser) ParseAdditiveExpression() Expr {
 func (parser *Parser) ParseMultiplicativeExpression() Expr {
 	fir := parser.ParseUnaryExpression()
 	if parser.Lexer.Tocken == LMulti {
+		parser.Lexer.Next()
+
 		sec := parser.ParseMultiplicativeExpression()
 		return NewEDualCal(fir,Multi,sec)
 	}
@@ -405,8 +467,12 @@ func (parser *Parser) ParseUnaryExpression() Expr {
 		expr := parser.ParseMemberExpression()
 		switch parser.Lexer.Tocken {
 		case LPlusPlus:
+		parser.Lexer.Next()
+
 			return NewEUnary(false,RPlusPlus,expr)
 		case LMinusMinus:
+		parser.Lexer.Next()
+
 			return NewEUnary(false,RMinusMinus,expr)
 		}
 		return expr
@@ -452,6 +518,7 @@ func (parser *Parser) ParseArguments() []Expr {
 
 func (parser *Parser) ParseCondition() Expr {
 	Assert(parser.Lexer.Tocken==LOpenParen)
+	parser.Lexer.Next()
 	expr := parser.ParseExpression()
 	Assert(parser.Lexer.Tocken==LCloseParen)
 	parser.Lexer.Next()
@@ -479,19 +546,24 @@ func (parser *Parser) ParseMemberExpression() (Expr) {
 	var se  *Expr
 	switch parser.Lexer.Tocken {
 	case LDot:
+		parser.Lexer.Next()
 		value1 := Dot
 		opt = &value1
 		sec := parser.ParseMemberExpression()
 		return NewEMember(fir,opt,&sec)
 	case LOpenBraket:
+		parser.Lexer.Next()
 		value := Braket
 		opt = &value
+		Assert(parser.Lexer.Tocken == LCloseBraket)
 		sec := parser.ParseExpression()
 		return NewEMember(fir,opt,&sec)
 	case LOpenParen:
+		parser.Lexer.Next()
 		value := Paren
 		opt = &value
 		sec := parser.ParseArgumentList()
+		Assert(parser.Lexer.Tocken == LCloseParen)
 		parser.Lexer.Next()
 		return NewEMember(fir,opt,&sec)
 	}
@@ -500,7 +572,6 @@ func (parser *Parser) ParseMemberExpression() (Expr) {
 
 func (parser *Parser) ParseArgumentList() Expr {
 	results := make([]Expr,0)
-	parser.Lexer.Next()
 	for parser.Lexer.Tocken != LCloseParen {
 		results = append(results, parser.ParseAssignmentExpression())
 		if parser.Lexer.Tocken != LComma {
@@ -519,20 +590,28 @@ func (parser *Parser) parsePrimaryExpression() (Expr) {
 		parser.Lexer.Next()
 		return expr
 	case LIdentifier:
+		parser.Lexer.Next()
 		return NewEIdentifier(parser.Lexer.Value)
 	case LInteger:
+		parser.Lexer.Next()
 		return NewEIntegerLiteral(parser.Lexer.Value)
 	case LFloat:
+		parser.Lexer.Next()
 		return NewEFloatingPointLiteral(parser.Lexer.Value)
 	case LStringLiteral:
+		parser.Lexer.Next()
 		return NewEStringLiteral(parser.Lexer.Value)
 	case LFalse:
+		parser.Lexer.Next()
 		return NewEFalse()
 	case LTrue:
+		parser.Lexer.Next()
 		return NewETrue()
 	case LNull:
+		parser.Lexer.Next()
 		return NewENull()
 	case LThis:
+		parser.Lexer.Next()
 		return NewEThis()
 	}
 	return Expr{}

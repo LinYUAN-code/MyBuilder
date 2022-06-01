@@ -288,16 +288,28 @@ type EDeclearVariable struct {
 	Variables Expr
 }
 
-func NewEVariables(identifiers []Expr,assignmentExpression Expr) Expr {
+func NewEVariables(variables []Expr) Expr {
 	return Expr{
 		Data: EVariables{
-			Identifiers: identifiers,
-			AssignmentExpression: assignmentExpression,		
+			Variables: variables,
 		},
 	}
 }
 type EVariables struct {
-	Identifiers []Expr
+	Variables []Expr
+}
+
+func NewEVariable(fir Expr,sec Expr) Expr {
+	return Expr{
+		Data: EVariable{
+			Identifier: fir,
+			AssignmentExpression: sec,
+		},
+	}
+}
+
+type EVariable struct {
+	Identifier Expr
 	AssignmentExpression Expr
 }
 
