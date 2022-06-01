@@ -136,7 +136,7 @@ var keywords = map[string] T {
 	"in": LIn,
 	"break": LBreak,
 	"continue": LContinue,
-	"with": LWith
+	"with": LWith,
 }
 
 var TToString = map[T] string {
