@@ -16,7 +16,7 @@ import (
 */
 
 func Assert(condition bool) {
-	fmt.Errorf("parser 发生语法错误")
+	fmt.Println("parser 发生语法错误")
 }
 
 
