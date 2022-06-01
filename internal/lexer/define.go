@@ -31,12 +31,21 @@ const (
 	LCloseBraket
 
 	LLet
+	LVar
+	LConst
+
 	LFor
 	LIf
 	LElse
+	LWhile
 	LBar
 	LLess
+	LLessEqual
+
+
 	LGreater
+	LGreaterEqual
+
 	LBarBar
 	LBarEqual
 	LReturn
@@ -53,6 +62,34 @@ const (
 	LDelete
 	LNew
 	LTypeof
+
+	LQuestion
+
+	// AssignmentOperator 
+	LPlusEqual
+	LMinusEqual
+
+	LIn
+	
+	LAnd
+	LAndAnd
+
+	LCaret
+
+	LExclamation //!
+	LExclamationEqual //!=
+	LExclamationEqualEqual //!==
+
+	LLshift
+	LRshift
+
+	LMulti //*
+
+	LBreak
+
+	LContinue
+
+	LWith
 )
 
 
@@ -82,6 +119,8 @@ type Lexer struct {
 
 var keywords = map[string] T {
 	"let": LLet,
+	"var": LVar,
+	"const": LConst,
 	"for": LFor,
 	"if":  LIf,
 	"function": LFuntion,
@@ -93,6 +132,11 @@ var keywords = map[string] T {
 	"delete": LDelete,
 	"new": LNew,
 	"typeof": LTypeof,
+	"while": LWhile,
+	"in": LIn,
+	"break": LBreak,
+	"continue": LContinue,
+	"with": LWith
 }
 
 var TToString = map[T] string {

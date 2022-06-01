@@ -153,6 +153,29 @@ func (lexer *Lexer) Next() {
 			default:
 				lexer.Tocken = LBar
 			}
+		case '&':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '&':
+				lexer.Tocken = LAndAnd
+				lexer.ReadUtf8()
+			default:
+				lexer.Tocken = LAnd
+			}
+		case '^':
+			lexer.Tocken = LCaret
+			lexer.ReadUtf8()
+		case '!':
+			lexer.ReadUtf8()
+			if lexer.CodePoint == '=' {
+				lexer.ReadUtf8()
+				if lexer.CodePoint == '=' {
+					lexer.Tocken = LExclamationEqualEqual
+				} else {
+					lexer.Tocken = LExclamationEqual
+				}
+			}
+			lexer.Tocken = LExclamation
 		case '(':
 			lexer.Tocken = LOpenParen
 			lexer.ReadUtf8()
@@ -177,6 +200,9 @@ func (lexer *Lexer) Next() {
 			case '+':
 				lexer.Tocken = LPlusPlus
 				lexer.ReadUtf8()
+			case '=':
+				lexer.Tocken = LPlusEqual
+				lexer.ReadUtf8()
 			default:
 				lexer.Tocken = LPlus
 			}
@@ -186,20 +212,51 @@ func (lexer *Lexer) Next() {
 			case '-':
 				lexer.Tocken = LMinusMinus
 				lexer.ReadUtf8()
+			case '=':
+				lexer.Tocken = LMinusEqual
+				lexer.ReadUtf8()
 			default:
 				lexer.Tocken = LMinus
 			}
+		case '*':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			default:
+				lexer.Tocken = LMulti
+			}
 		case '<':
+			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '=':
+				lexer.ReadUtf8()
+				lexer.Tocken = LLessEqual
+			case '<':
+				lexer.ReadUtf8()
+				lexer.Tocken = LLshift
+			}
 			lexer.Tocken = LLess
-			lexer.ReadUtf8()
 		case '>':
-			lexer.Tocken = LGreater
 			lexer.ReadUtf8()
+			switch lexer.CodePoint {
+			case '=':
+				lexer.ReadUtf8()
+				lexer.Tocken = LGreaterEqual
+			case '>':
+				lexer.ReadUtf8()
+				lexer.Tocken = LRshift
+			}
+			if lexer.CodePoint == '=' {
+
+			}
+			lexer.Tocken = LGreater
 		case ',':
 			lexer.Tocken = LComma
 			lexer.ReadUtf8()
 		case '.','0','1', '2', '3', '4', '5', '6', '7', '8', '9': //简单支持十进制整数
 			lexer.parseNumber()
+		case '?':
+			lexer.Tocken = LQuestion
+			lexer.ReadUtf8()
 		case '_', '$',  //识别标识符
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
 			'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
