@@ -1,16 +1,14 @@
 package ast
 
-
-
-
+import "github.com/LinYUAN-code/MyBuilder/internal/util"
 
 // Statement
 type S interface {
-
+	ToJson() string 
 }
 
 type Stmts struct {
-	Stmt []Stmt
+	Stmts []Stmt
 }
 
 
@@ -20,7 +18,7 @@ type Stmt struct {
 	Data S
 }
 
-func NewSFunction(name Expr,args []Expr,body Stmt) Stmt {
+func NewSFunction(name Expr,args Expr,body Stmt) Stmt {
 	return Stmt{
 		Data: SFunction{
 			Name: name,
@@ -35,20 +33,31 @@ func NewSFunction(name Expr,args []Expr,body Stmt) Stmt {
 type SFunction struct {
 	Body Stmt
 	Name Expr
-	Args []Expr
+	Args Expr
+}
+func (s SFunction) ToJson() string {
+	return util.StructToJson(util.KV("Name",s.Name.Data.ToJson(),false),
+		util.KV("Args",s.Args.Data.ToJson(),false),
+		util.KV("Body",s.Body.Data.ToJson(),true))
 }
 
 func NewCompoundStatement(stmts []Stmt) Stmt {
 	return Stmt{
-		Data: CompoundStatement{
+		Data: SCompoundStatement{
 			Stmts: stmts,
 		},
 	}
 }
-type CompoundStatement struct {
+type SCompoundStatement struct {
 	Stmts []Stmt
 }
-
+func (s SCompoundStatement) ToJson() string {
+	arr := make([]string,0)
+	for _,item := range s.Stmts {
+		arr = append(arr, item.Data.ToJson())
+	}
+	return util.JsonArray(arr...)
+}
 
 /*
 	for(Stmt1;expr;Stmt2) {
@@ -73,6 +82,14 @@ type SFor struct {
 	Expr3 Expr
 	Stmt Stmt
 }
+func (s SFor) ToJson() string {
+	return util.StructToJson(
+		util.KV("Expr1",s.Expr1.Data.ToJson(),false),
+		util.KV("Expr2",s.Expr2.Data.ToJson(),false),
+		util.KV("Expr3",s.Expr3.Data.ToJson(),false),
+		util.KV("Body",s.Stmt.Data.ToJson(),true),
+	)
+}
 
 func NewSForIn(fir Expr,sec Expr,stmt Stmt) Stmt {
 	return Stmt{
@@ -88,9 +105,12 @@ type SForIn struct {
 	Sec Expr
 	Stmt Stmt
 }
+func (s SForIn) ToJson() string {
+	return "SForIn"
+}
 
 
-func NewSIf(expr Expr,pass Stmt,fail *Stmt) Stmt {
+func NewSIf(expr Expr,pass Stmt,fail Stmt) Stmt {
 	return Stmt{
 		Data: SIf{
 			Expr: expr,
@@ -103,7 +123,22 @@ func NewSIf(expr Expr,pass Stmt,fail *Stmt) Stmt {
 type SIf struct {
 	Expr Expr
 	Pass Stmt
-	Fail *Stmt
+	Fail Stmt
+}
+func (s SIf) ToJson() string {
+	if IsSEmpty(s.Fail) {
+		return util.StructToJson(
+			util.KV("Expr",s.Expr.Data.ToJson(),false),
+			util.KV("Pass",s.Pass.Data.ToJson(),true),
+		)
+	} else {
+		return util.StructToJson(
+			util.KV("Expr",s.Expr.Data.ToJson(),false),
+			util.KV("Pass",s.Pass.Data.ToJson(),true),
+			util.KV("Fail",s.Fail.Data.ToJson(),true),
+		)
+	}
+
 }
 
 func NewSWhile(expr Expr,body Stmt) Stmt {
@@ -119,6 +154,9 @@ type SWhile struct {
 	Expr Expr
 	Body Stmt
 }
+func (s SWhile) ToJson() string {
+	return "SWhile"
+}
 
 
 func NewSBreak() Stmt {
@@ -128,6 +166,9 @@ func NewSBreak() Stmt {
 }
 type SBreak struct {
 
+}
+func (s SBreak) ToJson() string {
+	return "SBreak"
 }
 
 
@@ -139,7 +180,9 @@ func NewSContinue() Stmt {
 type SContinue struct {
 
 }
-
+func (s SContinue) ToJson() string {
+	return "SContinue"
+}
 
 
 /*
@@ -157,7 +200,9 @@ type SWith struct {
 	Fir Expr
 	Sec Stmt
 }
-
+func (s SWith) ToJson() string {
+	return "SWith"
+}
 
 // return ExpressionOpt
 func NewSReturn(fir Expr) Stmt {
@@ -170,6 +215,11 @@ func NewSReturn(fir Expr) Stmt {
 type SReturn struct {
 	Fir Expr
 }
+func (s SReturn) ToJson() string {
+	return util.StructToJson(
+		util.KV("returnValue", s.Fir.Data.ToJson(), false),
+	)
+}
 
 func NewSVariablesOrExpression(fir Expr) Stmt {
 	return Stmt{
@@ -181,6 +231,9 @@ func NewSVariablesOrExpression(fir Expr) Stmt {
 type SVariablesOrExpression struct {
 	Fir Expr
 }
+func (s SVariablesOrExpression) ToJson() string {
+	return s.Fir.Data.ToJson()
+}
 
 func NewSEmpty() Stmt {
 	return Stmt{
@@ -189,4 +242,8 @@ func NewSEmpty() Stmt {
 }
 type SEmpty struct {
 
+}
+
+func (s SEmpty) ToJson() string {
+	return "SEmpty"
 }

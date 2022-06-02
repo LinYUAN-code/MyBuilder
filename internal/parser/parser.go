@@ -16,7 +16,9 @@ import (
 */
 
 func Assert(condition bool) {
-	fmt.Println("parser 发生语法错误")
+	if !condition {
+		fmt.Println("parser 发生语法错误")
+	}
 }
 
 
@@ -53,7 +55,7 @@ func (parse *Parser) ShowAllTocken() {
 }
 
 
-func (parser *Parser) parseArgs() ([]Expr) {
+func (parser *Parser) parseArgs() (Expr) {
 	Assert(parser.Lexer.Tocken == LOpenParen)
 	parser.Lexer.Next()
 	result := make([]Expr,0)
@@ -67,16 +69,16 @@ func (parser *Parser) parseArgs() ([]Expr) {
 	}
 	Assert(parser.Lexer.Tocken == LCloseParen)
 	parser.Lexer.Next()
-	return result
+	return NewEArgs(result)
 }
 
 // 采用递归下降分析法
 func (parser *Parser) ParseStmts() (Stmts) {
 	program := Stmts{}
-	program.Stmt = make([]Stmt,0)
+	program.Stmts = make([]Stmt,0)
 	parser.Lexer.Next()
 	for parser.Lexer.Tocken != LENDOFFILE{
-		program.Stmt = append(program.Stmt, parser.ParseElement())
+		program.Stmts = append(program.Stmts, parser.ParseElement())
 	}
 	return program
 }
@@ -137,10 +139,9 @@ func (parser *Parser) ParseStatement() Stmt {
 			parser.Lexer.Next()
 			expr := parser.ParseCondition()
 			pass := parser.ParseStatement()
-			var fail *Stmt = nil
+			var fail Stmt = NewSEmpty()
 			if parser.Lexer.Tocken==LElse {
-				value := parser.ParseStatement()
-				fail = &value
+				fail = parser.ParseStatement()
 			}
 			return NewSIf(expr,pass,fail)
 		case LWhile:
@@ -542,30 +543,24 @@ func (parser *Parser) ParseExpression() Expr {
 
 func (parser *Parser) ParseMemberExpression() (Expr) {
 	fir := parser.parsePrimaryExpression()
-	var opt *Opt = nil
-	var se  *Expr
+	var opt Opt = None
+	var se  Expr = NewEEmpty()
 	switch parser.Lexer.Tocken {
 	case LDot:
 		parser.Lexer.Next()
-		value1 := Dot
-		opt = &value1
 		sec := parser.ParseMemberExpression()
-		return NewEMember(fir,opt,&sec)
+		return NewEMember(fir,Dot,sec)
 	case LOpenBraket:
 		parser.Lexer.Next()
-		value := Braket
-		opt = &value
 		Assert(parser.Lexer.Tocken == LCloseBraket)
 		sec := parser.ParseExpression()
-		return NewEMember(fir,opt,&sec)
+		return NewEMember(fir,Braket,sec)
 	case LOpenParen:
 		parser.Lexer.Next()
-		value := Paren
-		opt = &value
 		sec := parser.ParseArgumentList()
 		Assert(parser.Lexer.Tocken == LCloseParen)
 		parser.Lexer.Next()
-		return NewEMember(fir,opt,&sec)
+		return NewEMember(fir,Paren,sec)
 	}
 	return NewEMember(fir,opt,se)
 }

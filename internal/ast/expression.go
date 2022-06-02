@@ -1,16 +1,16 @@
 package ast
 
-
-
+import "github.com/LinYUAN-code/MyBuilder/internal/util"
 
 // expression
 type E interface {
-
+	ToJson() string
 }
 
 type Opt uint8
 const (
 	Dot Opt = iota
+	None
 	Braket
 	Paren
 	Plus
@@ -52,6 +52,50 @@ const (
 	Multi
 )
 
+var optToString = map[Opt]string {
+	Dot: ".",
+	None: "none",
+	Braket: "[]",
+	Paren: "()",
+	Plus: "+",
+	Minus: "-",
+	INSTANCEOF: "instanceof",
+
+	LShift: "<<",
+	RShift: ">>",
+
+	// unary
+	NPlusPlus: "++ in left",  //和lexer里面的LPlusPlus 冲突
+	NMinusMinus: "-- in left",
+	RPlusPlus: "++",
+	RMinusMinus: "--",
+	TYPEOF: "typeof",
+	New: "new",
+	Delete: "delete",
+	
+	// AssignmentOperator 
+	PlusEqual: "+=",
+	MinusEqual: "-=",
+
+	Caret: "^", // ^ 
+	Bar: "|",
+	And: "&",
+	BarBar: "||",
+	AndAnd: "&&",
+
+	ExclamationEqual: "!=",
+	ExclamationEqualEqual: "!==",
+	EqualEuqal: "==",
+	EqualEuqalEuqal: "===",
+
+	Less: "<",
+	LessEqual: "<=",
+	Greater: ">",
+	GreaterEqual: ">=",
+
+	Multi: "*",
+}
+
 type Declear uint8
 const (
 	Let Declear = iota
@@ -61,8 +105,9 @@ const (
 
 type Expr struct {
 	locPos uint32
-	Data S
+	Data E
 }
+
 
 func NewEParenExpression(expr Expr) (Expr) {
 	return Expr{
@@ -74,7 +119,9 @@ func NewEParenExpression(expr Expr) (Expr) {
 type EParenExpression struct {
 	Expr Expr
 }
-
+func (e EParenExpression) ToJson() string {
+	return "EParenExpression"
+}
 
 func NewEIdentifier(value string) (Expr) {
 	return Expr{
@@ -86,6 +133,9 @@ func NewEIdentifier(value string) (Expr) {
 type EIdentifier struct {
 	Value string
 }
+func (e EIdentifier) ToJson() string {
+	return e.Value
+}
 
 func NewEIntegerLiteral(value string) (Expr) {
 	return Expr{
@@ -94,10 +144,11 @@ func NewEIntegerLiteral(value string) (Expr) {
 		},
 	}
 }
-
-
 type EIntegerLiteral struct {
 	Value string
+}
+func (e EIntegerLiteral) ToJson() string {
+	return e.Value
 }
 
 func NewEFloatingPointLiteral(value string) (Expr) {
@@ -107,10 +158,13 @@ func NewEFloatingPointLiteral(value string) (Expr) {
 		},
 	}
 }
-
 type EFloatingPointLiteral struct {
 	Value string
 }
+func (e EFloatingPointLiteral) ToJson() string {
+	return e.Value
+}
+
 func NewEStringLiteral(value string) Expr {
 	return Expr{
 		Data: EStringLiteral{
@@ -121,6 +175,10 @@ func NewEStringLiteral(value string) Expr {
 type EStringLiteral struct {
 	Value string
 }
+func (e EStringLiteral) ToJson() string {
+	return e.Value
+}
+
 
 func NewEFalse() Expr {
 	return Expr{
@@ -128,6 +186,9 @@ func NewEFalse() Expr {
 	}
 }
 type EFalse struct {
+}
+func (e EFalse) ToJson() string {
+	return "EFalse"
 }
 
 func NewETrue() Expr {
@@ -138,12 +199,20 @@ func NewETrue() Expr {
 type ETrue struct {
 }
 
+func (e ETrue) ToJson() string {
+	return "ETrue"
+}
+
 func NewENull() Expr {
 	return Expr{
 		Data: ENull{},
 	}
 }
 type ENull struct {
+}
+
+func (e ENull) ToJson() string {
+	return "ENull"
 }
 
 func NewEThis() Expr {
@@ -154,7 +223,11 @@ func NewEThis() Expr {
 type EThis struct {
 }
 
-func NewEMember(fir Expr,opt *Opt,sec *Expr) Expr {
+func (e EThis) ToJson() string {
+	return "EThis"
+}
+
+func NewEMember(fir Expr,opt Opt,sec Expr) Expr {
 	return Expr{
 		Data: EMember{
 			Fir: fir,
@@ -165,8 +238,15 @@ func NewEMember(fir Expr,opt *Opt,sec *Expr) Expr {
 }
 type EMember struct {
 	Fir Expr
-	Opt *Opt
-	Sec *Expr
+	Opt Opt
+	Sec Expr
+}
+func (e EMember) ToJson() string {
+	if e.Opt == None {
+		return e.Fir.Data.ToJson() 
+	} else {
+		return e.Fir.Data.ToJson() + optToString[e.Opt] + e.Sec.Data.ToJson()
+	}
 }
 
 
@@ -185,6 +265,9 @@ type EConstructorCall struct {
 	Sec Expr
 }
 
+func (e EConstructorCall) ToJson() string {
+	return "EConstructorCall"
+}
 
 func NewEConstructor(constructorCall Expr,this bool) Expr {
 	return Expr{
@@ -197,6 +280,10 @@ func NewEConstructor(constructorCall Expr,this bool) Expr {
 type EConstructor struct {
 	ConstructorCall Expr
 	This bool
+}
+
+func (e EConstructor) ToJson() string {
+	return "EConstructor"
 }
 
 func NewEUnary(neg bool,opt Opt,expr Expr) Expr {
@@ -214,6 +301,9 @@ type EUnary struct {
 	Neg bool //前面是否有负号比如 -++i
 	Opt Opt
 	Expr Expr
+}
+func (e EUnary) ToJson() string {
+	return "EUnary"
 }
 
 
@@ -244,6 +334,13 @@ type EDualCal struct {
 	Opt Opt
 	Sec Expr
 }
+func (e EDualCal) ToJson() string {
+	return util.StructToJson(
+		util.KV("Fir",e.Fir.Data.ToJson(),false),
+		util.KV("Opt",optToString[e.Opt],false),
+		util.KV("Sec",e.Sec.Data.ToJson(),false),
+	)
+}
 
 
 func NewEConditional(fir Expr,sec Expr,thir Expr) Expr {
@@ -262,6 +359,10 @@ type EConditional struct {
 	Thir Expr
 }
 
+func (e EConditional) ToJson() string {
+	return "EConditional"
+}
+
 func NewEExpressionComma(exprs []Expr) Expr {
 	return Expr{
 		locPos: 1,
@@ -273,6 +374,10 @@ func NewEExpressionComma(exprs []Expr) Expr {
 type EExpressionComma struct {
 	Exprs []Expr
 }
+func (e  EExpressionComma) ToJson() string {
+	return "EExpressionComma"
+}
+
 
 func NewEDeclearVariable(opt Declear,variables Expr) Expr {
 	return Expr{
@@ -287,6 +392,10 @@ type EDeclearVariable struct {
 	Opt Declear
 	Variables Expr
 }
+func (e EDeclearVariable) ToJson() string {
+	return "EDeclearVariable"
+}
+
 
 func NewEVariables(variables []Expr) Expr {
 	return Expr{
@@ -298,6 +407,11 @@ func NewEVariables(variables []Expr) Expr {
 type EVariables struct {
 	Variables []Expr
 }
+
+func (e EVariables) ToJson() string {
+	return "EVariables"
+}
+
 
 func NewEVariable(fir Expr,sec Expr) Expr {
 	return Expr{
@@ -311,6 +425,10 @@ func NewEVariable(fir Expr,sec Expr) Expr {
 type EVariable struct {
 	Identifier Expr
 	AssignmentExpression Expr
+}
+
+func (e EVariable) ToJson() string {
+	return "EVariable"
 }
 
 
@@ -329,6 +447,10 @@ type EConditionalExpression struct {
 	Expr2 Expr
 	Expr3 Expr
 }
+func (e EConditionalExpression) ToJson() string {
+	return "EConditionalExpression"
+}
+
 
 
 func NewEArgumentList(assignmentExpressions []Expr) Expr {
@@ -341,10 +463,18 @@ func NewEArgumentList(assignmentExpressions []Expr) Expr {
 type EArgumentList struct {
 	AssignmentExpressions []Expr
 }
+func (e EArgumentList) ToJson() string {
+	arr := make([]string,0)
+	for _,item := range e.AssignmentExpressions {
+		arr = append(arr, item.Data.ToJson())
+	}
+	return util.JsonArray(arr...)
+}
+
 
 func NewEExpression(exprs []Expr) Expr {
 	return Expr{
-		Data: EExpressionComma{
+		Data: EExpression{
 			Exprs: exprs,
 		},
 	}
@@ -352,7 +482,13 @@ func NewEExpression(exprs []Expr) Expr {
 type EExpression struct {
 	Exprs []Expr
 }
-
+func (e EExpression) ToJson() string {
+	arr := make([]string,0)
+	for _,item := range e.Exprs {
+		arr = append(arr, item.Data.ToJson())
+	}
+	return util.JsonArray(arr...)
+}
 
 func NewEEmpty() Expr {
 	return Expr{
@@ -361,4 +497,28 @@ func NewEEmpty() Expr {
 }
 type EEmpty struct {
 
+}
+
+func (e EEmpty) ToJson() string {
+	return "null"
+}
+
+
+func NewEArgs(args []Expr) Expr {
+	return Expr{
+		Data: EArgs{
+			Args: args,
+		},
+	}
+} 
+type EArgs struct {
+	Args []Expr
+}
+
+func (e EArgs) ToJson() string {
+	arr := make([]string,0)
+	for _,item := range e.Args {
+		arr = append(arr, item.Data.ToJson())
+	}
+	return util.JsonArray(arr...)
 }

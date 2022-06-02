@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/LinYUAN-code/MyBuilder/internal/ast"
 	"github.com/LinYUAN-code/MyBuilder/internal/parser"
 )
 
@@ -16,5 +17,5 @@ func main() {
 	}
 	parser.Lexer.SayHello()
 	program := parser.ParseStmts()
-	println(len(program.Stmt))
+	println(ast.GenerateJson(program))
 }
